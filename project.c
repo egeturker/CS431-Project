@@ -159,84 +159,115 @@ void robot_emulator_init()
 // your codes should go in here
 bool serial_flag = false;
 Serial pc(USBTX, USBRX); // tx, rx
+InterruptIn bluetooth(p20);
+char c[128];
+int cindex = 0;
 
 void serial_rx_isr()
 {
-  serial_flag = true;
+    c[cindex] = pc.getc();
+    cindex++;
+    if(bluetooth.read() == 1)
+    {
+        serial_flag = true;
+    }
+}
+
+void serial()
+{
+    serial_flag = false;
+    switch (c[0]) 
+    {
+        case 'v':
+            in1 = 0.5;
+            in2 = 0;
+            in3 = 0.5;
+            in4 = 0;
+            splitted_wait_ms(1000);
+            in1 = 0;
+            in2 = 0;
+            in3 = 0;
+            in4 = 0;
+            break;
+        case 'w':
+            in1 = 1;
+            in2 = 0;
+            in3 = 1;
+            in4 = 0;
+            splitted_wait_ms(1000);
+            in1 = 0;
+            in2 = 0;
+            in3 = 0;
+            in4 = 0;
+            break;
+        case 's':
+            in1 = 0;
+            in2 = 0.5;
+            in3 = 0;
+            in4 = 0.5;
+            splitted_wait_ms(1000);
+            in1 = 0;
+            in2 = 0;
+            in3 = 0;
+            in4 = 0;
+            break;
+        case 'a':
+            in1 = 1;
+            in2 = 0;
+            in3 = 0;
+            in4 = 0;
+            splitted_wait_ms(1000);
+            in1 = 0;
+            in2 = 0;
+            in3 = 0;
+            in4 = 0;
+            break;  
+        case 'd':
+            in1 = 0;
+            in2 = 0;
+            in3 = 1;
+            in4 = 0;
+            splitted_wait_ms(1000);
+            in1 = 0;
+            in2 = 0;
+            in3 = 0;
+            in4 = 0;
+            break;
+        default:
+            break;
+    }
+    cindex = 0;
 }
 
 
+void bluetooth_isr()
+{
+    cindex = 0;
+}
+
+void noise_control()
+{
+    
+}
+
 // USER GLOBAL CODE SPACE END
-
-
 int main() 
 {
   // DO NOT REMOVE THIS CALL FROM MAIN!
   robot_emulator_init();
   // USER MAIN CODE SPACE BEGIN
   pc.attach(serial_rx_isr);
-  // your codes should go in here
-  // below is an example, you should modify it
+  
+  bluetooth.rise(&bluetooth_isr);
   while (1) 
   {
-    /*
-    in1 = 0.1;
-    in2 = 0;
-    in3 = 0.1;
-    in4 = 0;
-    splitted_wait_ms(5000);
-    */
-    
-    if(serial_flag)
+    if(serial_flag )
     {
-      serial_flag = false;
-      char c = pc.getc();
-      switch (c) 
-      {
-        case 'v':
-          in1 = 0.5;
-          in2 = 0;
-          in3 = 0.5;
-          in4 = 0;
-          break;
-        case 'w':
-          in1 = 1;
-          in2 = 0;
-          in3 = 1;
-          in4 = 0;
-          break;
-        case 's':
-          in1 = 0;
-          in2 = 0.5;
-          in3 = 0;
-          in4 = 0.5;
-          break;
-        case 'a':
-          in1 = 1;
-          in2 = 0;
-          in3 = 0;
-          in4 = 0;
-          break;  
-        case 'd':
-          in1 = 0;
-          in2 = 0;
-          in3 = 1;
-          in4 = 0;
-          break;
-        case 'h':
-          in1 = 0;
-          in2 = 0;
-          in3 = 0;
-          in4 = 0;
-          break;
-        default:
-          pc.printf("Unrecognized input '%c'\n", c);
-          break;
-      }  
+        serial();
     }
+    
+      
     splitted_wait_ms(10);
   }
   // USER MAIN CODE SPACE END
 }
-message.txt
-6 KB
