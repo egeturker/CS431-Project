@@ -158,10 +158,20 @@ void robot_emulator_init()
 // USER GLOBAL CODE SPACE BEGIN
 // your codes should go in here
 bool serial_flag = false;
+bool sensor_flag = false;
+
 Serial pc(USBTX, USBRX); // tx, rx
+
 InterruptIn bluetooth(p20);
+
+InterruptIn noise_sensorF(p5);
+InterruptIn noise_sensorB(p6);
+InterruptIn noise_sensorL(p7);
+InterruptIn noise_sensorR(p8);
+
 char c[128];
 int cindex = 0;
+char sensor_direction;
 
 void serial_rx_isr()
 {
@@ -245,9 +255,99 @@ void bluetooth_isr()
     cindex = 0;
 }
 
-void noise_control()
+
+void sensor_forward_isr()
 {
+    if(bluetooth.read() == 0)
+    {
+        sensor_direction = 'F';
+        sensor_flag = true;
+    }
+}
+
+void sensor_backward_isr()
+{
+    if(bluetooth.read() == 0)
+    {
+        sensor_direction = 'B';
+        sensor_flag = true;
+    }
+}
+
+void sensor_left_isr()
+{
+    if(bluetooth.read() == 0)
+    {
+        sensor_direction = 'L';
+        sensor_flag = true;
+    }
+}
+
+void sensor_right_isr()
+{
+    if(bluetooth.read() == 0)
+    {
+        sensor_direction = 'R';
+        sensor_flag = true;
+    }
+}
+
+void noise_sensor_control()
+{
+    sensor_flag = false;
     
+    if(sensor_direction == 'F')
+    {
+        in1 = 1;
+        in2 = 0;
+        in3 = 1;
+        in4 = 0;
+        splitted_wait_ms(1000);
+        in1 = 0;
+        in2 = 0;
+        in3 = 0;
+        in4 = 0;
+    }
+    else if(sensor_direction == 'B')
+    {
+        in1 = 0;
+        in2 = 1;
+        in3 = 0;
+        in4 = 1;
+        splitted_wait_ms(1000);
+        in1 = 0;
+        in2 = 0;
+        in3 = 0;
+        in4 = 0;
+    }
+    else if(sensor_direction == 'L')
+    {
+        in1 = 1;
+        in2 = 0;
+        in3 = 0;
+        in4 = 0;
+        splitted_wait_ms(3000);
+        in1 = 0;
+        in2 = 0;
+        in3 = 0;
+        in4 = 0;
+    }
+    else if(sensor_direction == 'R')
+    {
+        in1 = 0;
+        in2 = 0;
+        in3 = 1;
+        in4 = 0;
+        splitted_wait_ms(3000);
+        in1 = 0;
+        in2 = 0;
+        in3 = 0;
+        in4 = 0;
+    }
+    else
+    {
+        pc.printf("Funny things happen");
+    }
 }
 
 // USER GLOBAL CODE SPACE END
@@ -259,13 +359,22 @@ int main()
   pc.attach(serial_rx_isr);
   
   bluetooth.rise(&bluetooth_isr);
+  
+  noise_sensorF.rise(&sensor_forward_isr);
+  noise_sensorB.rise(&sensor_backward_isr);
+  noise_sensorL.rise(&sensor_left_isr);
+  noise_sensorR.rise(&sensor_right_isr);
+  
   while (1) 
   {
-    if(serial_flag )
+    if(serial_flag)
     {
         serial();
     }
-    
+    if(sensor_flag)
+    {
+        noise_sensor_control();
+    }
       
     splitted_wait_ms(10);
   }
