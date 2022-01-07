@@ -156,9 +156,14 @@ void robot_emulator_init()
 }
 
 // USER GLOBAL CODE SPACE BEGIN
+#define ULTRASONIC_SENSITIVITY 30.0
+
+void ultrasonic_beep();
 // your codes should go in here
 bool serial_flag = false;
 bool sensor_flag = false;
+bool ultra_flag = false;
+bool timer_running = false;
 
 Serial pc(USBTX, USBRX); // tx, rx
 
@@ -172,6 +177,9 @@ InterruptIn noise_sensorR(p8);
 char c[128];
 int cindex = 0;
 char sensor_direction;
+Timer timer;
+Ticker ticker;
+Ultrasonic u(p19, ultrasonic_beep);
 
 void serial_rx_isr()
 {
@@ -189,26 +197,32 @@ void serial()
     switch (c[0]) 
     {
         case 'v':
-            in1 = 0.5;
-            in2 = 0;
-            in3 = 0.5;
-            in4 = 0;
-            splitted_wait_ms(1000);
-            in1 = 0;
-            in2 = 0;
-            in3 = 0;
-            in4 = 0;
+            if(!ultra_flag)
+            {
+                in1 = 0.5;
+                in2 = 0;
+                in3 = 0.5;
+                in4 = 0;
+                splitted_wait_ms(1000);
+                in1 = 0;
+                in2 = 0;
+                in3 = 0;
+                in4 = 0;
+            }
             break;
         case 'w':
-            in1 = 1;
-            in2 = 0;
-            in3 = 1;
-            in4 = 0;
-            splitted_wait_ms(1000);
-            in1 = 0;
-            in2 = 0;
-            in3 = 0;
-            in4 = 0;
+            if(!ultra_flag)
+            {
+                in1 = 1;
+                in2 = 0;
+                in3 = 1;
+                in4 = 0;
+                splitted_wait_ms(1000);
+                in1 = 0;
+                in2 = 0;
+                in3 = 0;
+                in4 = 0;
+            }
             break;
         case 's':
             in1 = 0;
@@ -222,26 +236,32 @@ void serial()
             in4 = 0;
             break;
         case 'a':
-            in1 = 1;
-            in2 = 0;
-            in3 = 0;
-            in4 = 0;
-            splitted_wait_ms(1000);
-            in1 = 0;
-            in2 = 0;
-            in3 = 0;
-            in4 = 0;
+            if(!ultra_flag)
+            {
+                in1 = 1;
+                in2 = 0;
+                in3 = 0;
+                in4 = 0;
+                splitted_wait_ms(1000);
+                in1 = 0;
+                in2 = 0;
+                in3 = 0;
+                in4 = 0;
+            }
             break;  
         case 'd':
-            in1 = 0;
-            in2 = 0;
-            in3 = 1;
-            in4 = 0;
-            splitted_wait_ms(1000);
-            in1 = 0;
-            in2 = 0;
-            in3 = 0;
-            in4 = 0;
+            if(!ultra_flag)
+            {
+                in1 = 0;
+                in2 = 0;
+                in3 = 1;
+                in4 = 0;
+                splitted_wait_ms(1000);
+                in1 = 0;
+                in2 = 0;
+                in3 = 0;
+                in4 = 0;
+            }
             break;
         default:
             break;
@@ -296,7 +316,7 @@ void noise_sensor_control()
 {
     sensor_flag = false;
     
-    if(sensor_direction == 'F')
+    if(sensor_direction == 'F' && !ultra_flag)
     {
         in1 = 1;
         in2 = 0;
@@ -320,7 +340,7 @@ void noise_sensor_control()
         in3 = 0;
         in4 = 0;
     }
-    else if(sensor_direction == 'L')
+    else if(sensor_direction == 'L' && !ultra_flag)
     {
         in1 = 1;
         in2 = 0;
@@ -332,7 +352,7 @@ void noise_sensor_control()
         in3 = 0;
         in4 = 0;
     }
-    else if(sensor_direction == 'R')
+    else if(sensor_direction == 'R' && !ultra_flag)
     {
         in1 = 0;
         in2 = 0;
@@ -346,8 +366,29 @@ void noise_sensor_control()
     }
     else
     {
-        pc.printf("Funny things happen");
+        pc.printf("Funny things happen\n");
     }
+}
+
+void ultrasonic_control()
+{
+    timer.start();
+    u.trigger();
+}
+
+void ultrasonic_beep()
+{
+    timer.stop();
+    //pc.printf("%f meters to the wall \n", timer.read()*(Ultrasonic::SPEED_OF_SOUND/2));
+    if(timer.read()*(Ultrasonic::SPEED_OF_SOUND/2) <= ULTRASONIC_SENSITIVITY)
+    {
+        ultra_flag = true;
+    }
+    else
+    {
+        ultra_flag = false;
+    }
+    timer.reset();
 }
 
 // USER GLOBAL CODE SPACE END
@@ -357,6 +398,12 @@ int main()
   robot_emulator_init();
   // USER MAIN CODE SPACE BEGIN
   pc.attach(serial_rx_isr);
+  /*
+  the furthest distance from wall at 5V potentiometer is ~216.
+  So the ticker will check every 0.2 seconds.
+  216 * 2 / 3350 = ~0.13. But in order to not miss results periodic check can not be faster than 0.2 seconds.
+  */
+  ticker.attach(&ultrasonic_control, 0.2);
   
   bluetooth.rise(&bluetooth_isr);
   
@@ -375,7 +422,7 @@ int main()
     {
         noise_sensor_control();
     }
-      
+    
     splitted_wait_ms(10);
   }
   // USER MAIN CODE SPACE END
